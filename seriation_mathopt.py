@@ -818,7 +818,7 @@ class MatrixSeriation:
         return (1/(self.nrows*self.ncols))*sum(sum(HOM))
 
 
-    def plot_matrices(self, errorA, errorB):
+    def plot_matrices(self):
         """Plots the original and transformed matrices side by side."""
         
         fig, axes = plt.subplots(1, 2, figsize=(12, 6))
@@ -899,27 +899,6 @@ def generate_binary_instances(n, m, density=0.5):
     np.random.shuffle(matrix)
     # Reshape into an n x m matrix
     return matrix.reshape(n, m)
-
-# Example usage:
-#if __name__ == "__main__":
-    #test_matrix = np.round(np.random.rand(5, 5),decimals=0)  # Example similarity/distance matrix
-    # for i in range(min(test_matrix.shape[0],test_matrix.shape[1])):
-    #     test_matrix[i,i]=1
-    # print(test_matrix)
-    #test_matrix= generate_mosel_style_matrix(10, 10)
-    
-    #file=f"random_{test_matrix.shape[0]}_{test_matrix.shape[1]}.txt"
-    # file="sim.txt"
-    # file="reac.txt"
-    # file="retsim.txt"
-    # file="ceramic.txt"
-    # file="wine.txt"
-    # file="archmatrix.txt"
-    # file="ten.txt"
-    # file="laporte78.txt"
-    # file="mtcars.txt"
-
-    #test_matrix=np.loadtxt(file, delimiter=",")
 
     
 
