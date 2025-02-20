@@ -6,7 +6,7 @@ import pandas as pd
 import os
 
 class MatrixSeriation:
-    def __init__(self, matrix, file="test", method='general', time_limit=3600, extra_constraints=None, symmetric_ordering=True, output=0, eps_neigh=1.0):
+    def __init__(self, matrix, file="test", method='general', time_limit=3600, extra_constraints=None, coordinated_ordering=True, output=0, eps_neigh=1.0):
         """
         Initialize the MatrixSeriation class.
         
@@ -16,14 +16,14 @@ class MatrixSeriation:
         - time_limit: int, the maximum allowed time for the solver in seconds
         - extra_constraints: function, a function that adds extra constraints to the model
         - enforce_square: bool, whether to enforce the matrix to be square for certain models
-        - enforce_symmetric_ordering: bool, whether to enforce row and column sorting in the same order
+        - enforce_coordinated_ordering: bool, whether to enforce row and column sorting in the same order
         """
         self.matrix = np.array(matrix)
         self.file=file
         self.method = method
         self.time_limit = time_limit
         self.extra_constraints = extra_constraints
-        self.symmetric_ordering = symmetric_ordering
+        self.coordinated_ordering = coordinated_ordering
         self.nrows, self.ncols = self.matrix.shape  # Rows and columns
         if self.nrows == self.ncols:
             self.square=True
@@ -51,8 +51,12 @@ class MatrixSeriation:
         elif self.method == 'tsp':
             if self.eps_neigh<1.4:
                 return self._solve_tsp_VonNeumann()
-            else:
+            elif self.eps_neigh <=2:
                 return self._solve_tsp_Moore()
+            elif self.eps_neigh == 8:
+                return self._solve_tsp_Cross()
+            else:
+                return "Non supported neighborhood"
         # elif self.method == 'spp':
         #     if self.eps_neigh<1.4:
         #         return self._solve_spp()
@@ -80,7 +84,7 @@ class MatrixSeriation:
 
         x = model.addVars(self.nrows, self.nrows, vtype=GRB.BINARY, name="x")
         y = model.addVars(self.ncols, self.ncols, vtype=GRB.BINARY, name="y")
-        if self.symmetric_ordering and self.ncols==self.nrows:
+        if self.coordinated_ordering and self.ncols==self.nrows:
             for i in N:
                 for k in N:
                     model.addConstr(y[i,k]==x[i,k])
@@ -120,7 +124,7 @@ class MatrixSeriation:
         model.addConstr(gp.quicksum(2**k * x[0,k] for k in N) <= gp.quicksum(2**k * x[1,k] for k in N))
     
 
-        if not self.symmetric_ordering:
+        if not self.coordinated_ordering:
             for i in M:
                 model.addConstr(gp.quicksum(y[i,k] for k in M)==1)
                 model.addConstr(gp.quicksum(y[k,i] for k in M)==1)
@@ -160,7 +164,7 @@ class MatrixSeriation:
         # Decision variables
         x = model.addVars(self.nrows, self.nrows, vtype=GRB.BINARY, name="x")
         y = model.addVars(self.ncols, self.ncols, vtype=GRB.BINARY, name="y")
-        if self.symmetric_ordering and self.ncols==self.nrows:
+        if self.coordinated_ordering and self.ncols==self.nrows:
             for i in N:
                 for k in N:
                     model.addConstr(y[i,k]==x[i,k])
@@ -173,7 +177,7 @@ class MatrixSeriation:
         model.addConstrs((gp.quicksum(x[i, k] for k in N) == 1 for i in N), name="RowSumX")
         model.addConstrs((gp.quicksum(x[k, i] for k in N) == 1 for i in N), name="ColSumX")
 
-        if not self.symmetric_ordering:
+        if not self.coordinated_ordering:
             model.addConstrs((gp.quicksum(y[i, k] for k in M) == 1 for i in M), name="RowSumY")
             model.addConstrs((gp.quicksum(y[k, i] for k in M) == 1 for i in M), name="ColSumY")
 
@@ -223,7 +227,7 @@ class MatrixSeriation:
             gp.quicksum(s[k,l] for l in M) == gp.quicksum(self.matrix[i,j]*x[i,k] for i in N for j in M)
               for k in N
         )
-        if not self.symmetric_ordering:
+        if not self.coordinated_ordering:
             model.addConstrs(
                 gp.quicksum(s[k,l] for k in N) == gp.quicksum(self.matrix[i,j]*y[j,l] for i in N for j in M)
                 for l in M
@@ -288,7 +292,7 @@ class MatrixSeriation:
         zx = model.addVars(self.nrows, vtype=GRB.BINARY, name="zx")
         zy = model.addVars(self.ncols, vtype=GRB.BINARY, name="zy")
 
-        if self.symmetric_ordering and self.ncols==self.nrows:
+        if self.coordinated_ordering and self.ncols==self.nrows:
             for i in N:
                 for k in N:
                     model.addConstr(y[i,k]==x[i,k])
@@ -315,7 +319,7 @@ class MatrixSeriation:
                 #model.addConstr(gx[i, j] >=  x[i, j])
         
             
-        if not self.symmetric_ordering:
+        if not self.coordinated_ordering:
             model.addConstr(zy[0] == 0)
             model.addConstr(gp.quicksum(zy[i] for i in M) == 1)
             for i in M:
@@ -384,7 +388,7 @@ class MatrixSeriation:
         zx = model.addVars(self.nrows, vtype=GRB.BINARY, name="zx")
         zy = model.addVars(self.ncols, vtype=GRB.BINARY, name="zy")
 
-        if self.symmetric_ordering and self.ncols==self.nrows:
+        if self.coordinated_ordering and self.ncols==self.nrows:
             for i in N:
                 for k in N:
                     model.addConstr(y[i,k]==x[i,k])
@@ -422,7 +426,7 @@ class MatrixSeriation:
                 #model.addConstr(gx[i, j] >=  x[i, j])
         
             
-        if not self.symmetric_ordering:
+        if not self.coordinated_ordering:
             model.addConstr(zy[0] == 0)
             model.addConstr(gp.quicksum(zy[i] for i in M) == 1)
             for i in M:
@@ -495,7 +499,7 @@ class MatrixSeriation:
         zx = model.addVars(self.nrows, vtype=GRB.BINARY, name="zx")
         zy = model.addVars(self.ncols, vtype=GRB.BINARY, name="zy")
 
-        if self.symmetric_ordering and self.ncols==self.nrows:
+        if self.coordinated_ordering and self.ncols==self.nrows:
             for i in N:
                 for k in N:
                     model.addConstr(y[i,k]==x[i,k])
@@ -532,7 +536,7 @@ class MatrixSeriation:
                 #model.addConstr(gx[i, j] >=  x[i, j])
         
             
-        if not self.symmetric_ordering:
+        if not self.coordinated_ordering:
             model.addConstr(zy[0] == 0)
             model.addConstr(gp.quicksum(zy[i] for i in M) == 1)
             for i in M:
@@ -603,7 +607,7 @@ class MatrixSeriation:
     #     ty = model.addVars(self.ncols, vtype=GRB.BINARY,name="ty")
 
 
-    #     if self.symmetric_ordering and self.ncols==self.nrows:
+    #     if self.coordinated_ordering and self.ncols==self.nrows:
     #         for i in N:
     #             for k in N:
     #                 model.addConstr(y[i,k]==x[i,k])
@@ -630,7 +634,7 @@ class MatrixSeriation:
     #                 model.addConstr(x[i, j] + x[j, i] <= 1)
         
             
-    #     if not self.symmetric_ordering:
+    #     if not self.coordinated_ordering:
     #         model.addConstr(sy[0] == 0)
     #         model.addConstr(gp.quicksum(sy[i] for i in M) == 1)
     #         model.addConstr(gp.quicksum(ty[i] for i in M) == 1)
@@ -663,7 +667,7 @@ class MatrixSeriation:
     #                 i0=j
     #                 break
 
-    #     if self.symmetric_ordering:
+    #     if self.coordinated_ordering:
     #         ordery=orderx
     #     else:
     #         ordery=[]
@@ -732,7 +736,7 @@ class MatrixSeriation:
     #     ty = model.addVars(self.ncols, vtype=GRB.BINARY,name="ty")
 
 
-    #     if self.symmetric_ordering:
+    #     if self.coordinated_ordering:
     #         y=x
     #         sy=sx
     #         ty=tx
@@ -772,7 +776,7 @@ class MatrixSeriation:
     #                 model.addConstr(x[i, j] + x[j, i] <= 1)
         
             
-    #     if not self.symmetric_ordering:
+    #     if not self.coordinated_ordering:
     #         model.addConstr(sy[0] == 0)
     #         model.addConstr(gp.quicksum(sy[i] for i in M) == 1)
     #         model.addConstr(gp.quicksum(ty[i] for i in M) == 1)
@@ -805,7 +809,7 @@ class MatrixSeriation:
     #                 i0=j
     #                 break
 
-    #     if self.symmetric_ordering:
+    #     if self.coordinated_ordering:
     #         ordery=orderx
     #     else:
     #         ordery=[]
@@ -858,7 +862,7 @@ class MatrixSeriation:
             "Formulation": self.method,
             "nrows": self.nrows,
             "ncols": self.ncols,
-            "Sym": self.symmetric_ordering,
+            "Sym": self.coordinated_ordering,
             "eps_neigh": self.eps_neigh,
             "CPUTime": model.Runtime,
             "ObjectiveValue": model.ObjVal if model.status != GRB.INFEASIBLE else None,
@@ -965,7 +969,7 @@ class MatrixSeriation:
         axes[1].set_aspect("equal", adjustable="box")
         #axes[1].axis('equal')
         plt.show()
-        #plt.savefig(f"{self.file[:-4]}_{self.method}_sym{self.symmetric_ordering}_eps{self.eps_neigh}.png", dpi=300, bbox_inches='tight')
+        #plt.savefig(f"{self.file[:-4]}_{self.method}_sym{self.coordinated_ordering}_eps{self.eps_neigh}.png", dpi=300, bbox_inches='tight')
         #plt.close()
     
 def generate_mosel_style_matrix(n, m):

@@ -6,7 +6,7 @@
 
 In the class, _MatrixSeriation_, the parameters are set:
 
-seriation = MatrixSeriation(matrix, file=file, method=method, symmetric_ordering=sym, eps_neigh=eps, output=output)
+seriation = MatrixSeriation(matrix, file=file, method=method, coordinated_ordering=sym, eps_neigh=eps, output=output)
 
 where:
 
@@ -17,8 +17,8 @@ where:
         * spp: shortest path approaches
         * s: models based on the "s"-variables.
         * general: four index formulation (default)
-    - _symmetric_ordering_; True: if both rows and columns are sorted with the same permutations; False: if rows and columns are differently permuted.
-    - eps_neigh: 1 (Default): if the von Neumman neighbor is used, 1.5: is the Moore neighborhood is used for the stress seriation.
+    - _coordinated_ordering_; True: if both rows and columns are sorted with the same permutations; False: if rows and columns are differently permuted.
+    - eps_neigh: 1 (Default): if the von Neumman neighbor is used, 1.5: is the Moore neighborhood is used for the stress seriation; value 8 is the 2 steps cross neighborhood.
     - output: if the Gurobi outputflag information is printed while solving the problem (1) or not (0: default).
 
 the function:
@@ -82,7 +82,7 @@ array([[0.78, 0.25, 0.19, 0.19, 0.79, 0.17, 0.79, 0.84, 0.53, 0.69],
 
 ```python
 #The parameters for the problem are set:
-seriation = MatrixSeriation(A, method="tsp", symmetric_ordering=False, eps_neigh=1, output=0)
+seriation = MatrixSeriation(A, method="tsp", coordinated_ordering=False, eps_neigh=1, output=0)
 ```
 
 ```python
