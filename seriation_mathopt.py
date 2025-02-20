@@ -337,13 +337,6 @@ class MatrixSeriation:
         # Extract solution
         self.order_cols = np.argsort([sum(round(gy[i, j].x) for j in M) if zy[i].x < 0.5 else self.ncols for i in M])
         self.order_rows = np.argsort([sum(round(gx[i, j].x) for j in N) if zx[i].x < 0.5 else self.nrows for i in N])
-        print(len(self.order_cols), self.ncols, len(self.order_rows), self.nrows)
-        # for k in range(1,self.nrows):
-        #     for i in N:
-        #         for j in N:
-        #             if gx[i,j].x==k:
-        #                 print(f"{k}: {i}->{j}")
-        # print(self.order_rows, self.order_cols)
 
         transformed_matrix = self.matrix[self.order_rows][:, self.order_cols]
         self.transformed_matrix=transformed_matrix
@@ -960,7 +953,6 @@ class MatrixSeriation:
         if names:
             axisBx=[s for _, s in sorted(zip(self.order_rows, names))]
             axisBy=[s for _, s in sorted(zip(self.order_cols, names))]
-            print(axisBx)
         else:
             axisBx=self.order_rows
             axisBy=self.order_cols
