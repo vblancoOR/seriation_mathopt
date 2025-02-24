@@ -6,7 +6,7 @@ import pandas as pd
 import os
 
 class MatrixSeriation:
-    def __init__(self, matrix, file="test", method='general', time_limit=3600, extra_constraints=None, coordinated_ordering=True, output=0, eps_neigh=1.0):
+    def __init__(self, matrix, file="test", method='general', time_limit=3600, extra_constraints=None, coordinated_ordering=True, output=0, eps_neigh="VN"):
         """
         Initialize the MatrixSeriation class.
         
@@ -49,12 +49,14 @@ class MatrixSeriation:
         elif self.method == 's':
             return self._solve_s()
         elif self.method == 'tsp':
-            if self.eps_neigh<1.4:
+            if self.eps_neigh=="VonNeumann":
                 return self._solve_tsp_VonNeumann()
-            elif self.eps_neigh <=2:
+            elif self.eps_neigh=="Moore":
                 return self._solve_tsp_Moore()
-            elif self.eps_neigh == 8:
+            elif self.eps_neigh == "Cross":
                 return self._solve_tsp_Cross()
+            elif self.eps_neigh == "ME":
+                return self._solve_tsp_ME()
             else:
                 return "Non supported neighborhood"
         # elif self.method == 'spp':
@@ -338,11 +340,13 @@ class MatrixSeriation:
         model._lproot=0
         model.optimize(self.lproot)
 
-        # Extract solution
-        self.order_cols = np.argsort([sum(round(gy[i, j].x) for j in M) if zy[i].x < 0.5 else self.ncols for i in M])
-        self.order_rows = np.argsort([sum(round(gx[i, j].x) for j in N) if zx[i].x < 0.5 else self.nrows for i in N])
 
-        transformed_matrix = self.matrix[self.order_rows][:, self.order_cols]
+
+        # Extract solution
+        self.order_cols = np.argsort([sum(round(gy[i, j].x) for j in M) if zy[i].x < 0.5 else self.ncols-1 for i in M])
+        self.order_rows = np.argsort([sum(round(gx[i, j].x) for j in N) if zx[i].x < 0.5 else self.nrows-1 for i in N])
+        
+        transformed_matrix = self.matrix[self.order_rows,:][:, self.order_cols]
         self.transformed_matrix=transformed_matrix
         self._extract_solution_info(model)
 
@@ -457,7 +461,7 @@ class MatrixSeriation:
         #                 print(f"{k}: {i}->{j}")
         # print(self.order_rows, self.order_cols)
 
-        transformed_matrix = self.matrix[self.order_rows][:, self.order_cols]
+        transformed_matrix = self.matrix[self.order_rows,:][:, self.order_cols]
         self.transformed_matrix=transformed_matrix
         self._extract_solution_info(model)
 
@@ -567,7 +571,106 @@ class MatrixSeriation:
         #                 print(f"{k}: {i}->{j}")
         # print(self.order_rows, self.order_cols)
 
-        transformed_matrix = self.matrix[self.order_rows][:, self.order_cols]
+        transformed_matrix = self.matrix[self.order_rows,:][:, self.order_cols]
+        self.transformed_matrix=transformed_matrix
+        self._extract_solution_info(model)
+
+        return transformed_matrix
+    
+    def _solve_tsp_ME(self):
+
+        # Modelcle
+        model = gp.Model("tsp_cross")
+        model.setParam("Outputflag", self.output)
+        model.setParam("TimeLimit", self.time_limit)
+        #model.setParam("MIPFocus", 2)
+
+
+        N=range(self.nrows)
+        M=range(self.ncols)
+        # Compute costs
+        C1={}
+        C2={ }
+        for i in N:
+            for j in N:
+                C1[i, j] =  sum(self.matrix[i, k]*self.matrix[j, k] for k in M)
+        for i in M:
+            for j in M:
+                C2[i, j] =  sum(self.matrix[k, i]*self.matrix[k, j] for k in N)
+
+
+        # Variables
+        x = model.addVars(self.nrows, self.nrows, vtype=GRB.BINARY, name="x")
+        y = model.addVars(self.ncols, self.ncols, vtype=GRB.BINARY, name="y")
+
+        gx = model.addVars(self.nrows, self.nrows, name="gx")
+        gy = model.addVars(self.ncols, self.ncols, name="gy")
+
+        zx = model.addVars(self.nrows, vtype=GRB.BINARY, name="zx")
+        zy = model.addVars(self.ncols, vtype=GRB.BINARY, name="zy")
+
+        if self.coordinated_ordering and self.ncols==self.nrows:
+            for i in N:
+                for k in N:
+                    model.addConstr(y[i,k]==x[i,k])
+                    model.addConstr(gy[i,k]==gx[i,k])
+                model.addConstr(zy[i]==zx[i])
+
+
+                        
+       # Objective function
+        obj1=gp.quicksum(C1[i, j]*x[i, j] for i in N for j in N)
+        obj2=gp.quicksum(C2[i, j]*y[i, j] for i in M for j in M)
+        model.setObjective(obj1+obj2, GRB.MAXIMIZE)
+
+
+        # Constraints
+        model.addConstr(zx[0] == 0)
+        model.addConstr(gp.quicksum(zx[i] for i in N) == 1)
+        for i in N:
+            model.addConstr(gp.quicksum(x[i, j] for j in N if j != i) + zx[i] == 1)
+            x[i, i].ub=0
+            model.addConstr(gp.quicksum(x[j,i] for j in N if i != j) <= 1)
+            model.addConstr(gp.quicksum(gx[i, j] for j in N) >= gp.quicksum(gx[j, i] for j in N) - (self.nrows) * zx[i] + 1)
+            for j in N:
+                if j<i:
+                    model.addConstr(x[i, j] + x[j, i] <= 1)
+                model.addConstr(gx[i, j] <= (self.nrows-1) * x[i, j])
+                #model.addConstr(gx[i, j] >=  x[i, j])
+        
+            
+        if not self.coordinated_ordering:
+            model.addConstr(zy[0] == 0)
+            model.addConstr(gp.quicksum(zy[i] for i in M) == 1)
+            for i in M:
+                model.addConstr(gp.quicksum(y[i, j] for j in M if j != i) + zy[i] == 1)
+                model.addConstr(gp.quicksum(y[j, i] for j in M if i != j) <= 1)
+                model.addConstr(y[i, i] == 0)
+                model.addConstr(gp.quicksum(gy[i, j] for j in M) >= gp.quicksum(gy[j, i] for j in M) - (self.ncols) * zy[i] + 1)
+                for j in M:
+                    if j<i:
+                        model.addConstr(y[i, j] + y[j, i] <= 1)
+                    model.addConstr(gy[i, j] <= (self.ncols-1) * y[i, j])
+                    #model.addConstr(gy[i, j] >=  y[i, j])
+
+
+        # Solve model
+        model._lproot=0
+        model.optimize(self.lproot)
+        #model.write("tsp.sol")
+
+        # Extract solution
+        self.order_cols = np.argsort([sum(round(gy[i, j].x) for j in M) if zy[i].x < 0.5 else self.ncols-1 for i in M])
+        self.order_rows = np.argsort([sum(round(gx[i, j].x) for j in N) if zx[i].x < 0.5 else self.nrows-1 for i in N])
+        
+        # for k in range(1,self.nrows):
+        #     for i in N:
+        #         for j in N:
+        #             if gx[i,j].x==k:
+        #                 print(f"{k}: {i}->{j}")
+        # print(self.order_rows, self.order_cols)
+
+        transformed_matrix = self.matrix[self.order_rows,:][:, self.order_cols]
         self.transformed_matrix=transformed_matrix
         self._extract_solution_info(model)
 
@@ -884,10 +987,18 @@ class MatrixSeriation:
 
     def get_neighbors(self, i, j):
         """Computes neighbors for a given (i, j) in the matrix."""
+
+        if self.method=="VonNeumann":
+            eps=1
+        elif self.method=="Moore":
+            eps=1.5
+        else:
+            eps=1
+
         neighbors=[]
         for i1 in range(self.nrows):
             for j1 in range(self.ncols):
-                if 0.1 <= np.linalg.norm([i-i1, j-j1])<=self.eps_neigh:
+                if 0.1 <= np.linalg.norm([i-i1, j-j1])<=eps:
                     neighbors.append((i1,j1))
 
         return neighbors
@@ -955,11 +1066,11 @@ class MatrixSeriation:
         axes[0].set_aspect("equal", adjustable="box")
         #axes[0].axis('equal')
         if names:
-            axisBx=[s for _, s in sorted(zip(self.order_rows, names))]
-            axisBy=[s for _, s in sorted(zip(self.order_cols, names))]
+            axisBx=[names[i] for i in self.order_rows]
+            axisBy=[names[i] for i in self.order_cols]
         else:
-            axisBx=self.order_rows
-            axisBy=self.order_cols
+            axisBx=self.order_rows+np.ones(self.nrows, dtype=np.int8)
+            axisBy=self.order_cols+np.ones(self.ncols, dtype=np.int8)
 
         heat2=sns.heatmap(self.transformed_matrix.T, annot=False, fmt=".2f", xticklabels=axisBx, yticklabels=axisBy, cmap=cmap, linewidths=0.5, vmin=vmin, vmax=vmax, cbar=True, center=0.5, ax=axes[1], annot_kws={"size": 4}, cbar_kws={"shrink": 0.4})
         heat2.invert_yaxis()
@@ -1038,6 +1149,65 @@ def generate_binary_instances(n, m, density=0.5):
     np.random.shuffle(matrix)
     # Reshape into an n x m matrix
     return matrix.reshape(n, m)
+
+def compute_balanced_block_size(n, m, K):
+    """
+    Computes balanced block height and width for a given matrix size (n, m) and K value,
+    ensuring the rectangles are as regular as possible and do not span the entire number of rows or columns.
+
+    Parameters:
+        n (int): Number of rows in the matrix.
+        m (int): Number of columns in the matrix.
+        K (int): Number of unique values (blocks).
+
+    Returns:
+        (int, int): Approximate block height and width.
+    """
+    total_blocks = K  # Aim for K different block values
+
+    # Compute approximate block size
+    block_h = max(1, n // int(np.sqrt(K)))  # Use square root scaling for balanced partitioning
+    block_w = max(1, m // int(np.sqrt(K)))  # Ensure we get reasonable partitions
+
+    # Ensure blocks do not cover the entire matrix
+    block_h = min(block_h, n // 3)  # At most half of the rows
+    block_w = min(block_w, m // 3)  # At most half of the columns
+
+    return block_h, block_w
+
+def generate_balanced_block_matrix(n, m, K):
+    """
+    Generates an n x m matrix with integer entries in [0, K], 
+    initially structured as a block matrix with automatically determined block sizes,
+    ensuring blocks do not span the entire number of rows or columns,
+    then shuffles the rows and columns to disorder the structure.
+
+    Parameters:
+        n (int): Number of rows
+        m (int): Number of columns
+        K (int): Maximum integer value for entries (range: 0 to K)
+
+    Returns:
+        np.ndarray: Shuffled matrix
+    """
+    # Compute optimal block sizes
+    block_h, block_w = compute_balanced_block_size(n, m, K)
+
+    # Initialize an empty matrix
+    matrix = np.zeros((n, m), dtype=int)
+
+    # Assign values in computed blocks
+    for i in range(0, n, block_h):
+        for j in range(0, m, block_w):
+            value = np.random.randint(0, K + 1)
+            matrix[i:i + block_h, j:j + block_w] = value
+
+    original=matrix
+    # Shuffle rows and columns to disorder the matrix
+    matrix = matrix[np.random.permutation(n), :]
+    matrix = matrix[:, np.random.permutation(m)]
+
+    return original, matrix
 
     
 

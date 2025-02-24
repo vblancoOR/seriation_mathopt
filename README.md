@@ -18,7 +18,7 @@ where:
         * s: models based on the "s"-variables.
         * general: four index formulation (default)
     - _coordinated_ordering_; True: if both rows and columns are sorted with the same permutations; False: if rows and columns are differently permuted.
-    - eps_neigh: 1 (Default): if the von Neumman neighbor is used, 1.5: is the Moore neighborhood is used for the stress seriation; value 8 is the 2 steps cross neighborhood.
+    - eps_neigh: "VonNeumann" (Default): if the von Neumman neighbor is used, "Moore": is the Moore neighborhood is used for the stress seriation; "Cross" is the 2 steps cross neighborhood; "ME": measure of Efficiency
     - output: if the Gurobi outputflag information is printed while solving the problem (1) or not (0: default).
 
 the function:
