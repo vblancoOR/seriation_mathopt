@@ -1,0 +1,162 @@
+\ Model tsp_copy
+\ LP format - for model browsing. Use MPS format to capture full model detail.
+\ Signature: 0x4db7c3ae535ce267
+Minimize
+ 
+Subject To
+ FlowX(0): fx[0,1] + fx[0,2] + fx[0,3] + fx[0,4] + fx[0,5] + fx[0,6]
+   + fx[0,7] + fx[0,8] + fx[0,9] + fx[0,10] - fx[1,0] - fx[2,0] - fx[3,0]
+   - fx[4,0] - fx[5,0] - fx[6,0] - fx[7,0] - fx[8,0] - fx[9,0] - fx[10,0]
+   = 1
+ FlowX(1): - fx[0,1] + fx[1,0] + fx[1,2] + fx[1,3] + fx[1,4] + fx[1,5]
+   + fx[1,6] + fx[1,7] + fx[1,8] + fx[1,9] + fx[1,10] - fx[2,1] - fx[3,1]
+   - fx[4,1] - fx[5,1] - fx[6,1] - fx[7,1] - fx[8,1] - fx[9,1] - fx[10,1]
+   = 1
+ FlowX(2): - fx[0,2] - fx[1,2] + fx[2,0] + fx[2,1] + fx[2,3] + fx[2,4]
+   + fx[2,5] + fx[2,6] + fx[2,7] + fx[2,8] + fx[2,9] + fx[2,10] - fx[3,2]
+   - fx[4,2] - fx[5,2] - fx[6,2] - fx[7,2] - fx[8,2] - fx[9,2] - fx[10,2]
+   = 1
+ FlowX(3): - fx[0,3] - fx[1,3] - fx[2,3] + fx[3,0] + fx[3,1] + fx[3,2]
+   + fx[3,4] + fx[3,5] + fx[3,6] + fx[3,7] + fx[3,8] + fx[3,9] + fx[3,10]
+   - fx[4,3] - fx[5,3] - fx[6,3] - fx[7,3] - fx[8,3] - fx[9,3] - fx[10,3]
+   = 1
+ FlowX(4): - fx[0,4] - fx[1,4] - fx[2,4] - fx[3,4] + fx[4,0] + fx[4,1]
+   + fx[4,2] + fx[4,3] + fx[4,5] + fx[4,6] + fx[4,7] + fx[4,8] + fx[4,9]
+   + fx[4,10] - fx[5,4] - fx[6,4] - fx[7,4] - fx[8,4] - fx[9,4] - fx[10,4]
+   = 1
+ FlowX(5): - fx[0,5] - fx[1,5] - fx[2,5] - fx[3,5] - fx[4,5] + fx[5,0]
+   + fx[5,1] + fx[5,2] + fx[5,3] + fx[5,4] + fx[5,6] + fx[5,7] + fx[5,8]
+   + fx[5,9] + fx[5,10] - fx[6,5] - fx[7,5] - fx[8,5] - fx[9,5] - fx[10,5]
+   = 1
+ FlowX(6): - fx[0,6] - fx[1,6] - fx[2,6] - fx[3,6] - fx[4,6] - fx[5,6]
+   + fx[6,0] + fx[6,1] + fx[6,2] + fx[6,3] + fx[6,4] + fx[6,5] + fx[6,7]
+   + fx[6,8] + fx[6,9] + fx[6,10] - fx[7,6] - fx[8,6] - fx[9,6] - fx[10,6]
+   = 1
+ FlowX(7): - fx[0,7] - fx[1,7] - fx[2,7] - fx[3,7] - fx[4,7] - fx[5,7]
+   - fx[6,7] + fx[7,0] + fx[7,1] + fx[7,2] + fx[7,3] + fx[7,4] + fx[7,5]
+   + fx[7,6] + fx[7,8] + fx[7,9] + fx[7,10] - fx[8,7] - fx[9,7] - fx[10,7]
+   = 1
+ FlowX(8): - fx[0,8] - fx[1,8] - fx[2,8] - fx[3,8] - fx[4,8] - fx[5,8]
+   - fx[6,8] - fx[7,8] + fx[8,0] + fx[8,1] + fx[8,2] + fx[8,3] + fx[8,4]
+   + fx[8,5] + fx[8,6] + fx[8,7] + fx[8,9] + fx[8,10] - fx[9,8] - fx[10,8]
+   = 1
+ FlowX(9): - fx[0,9] - fx[1,9] - fx[2,9] - fx[3,9] - fx[4,9] - fx[5,9]
+   - fx[6,9] - fx[7,9] - fx[8,9] + fx[9,0] + fx[9,1] + fx[9,2] + fx[9,3]
+   + fx[9,4] + fx[9,5] + fx[9,6] + fx[9,7] + fx[9,8] + fx[9,10] - fx[10,9]
+   = 1
+ R450: fx[0,10] + fx[1,10] + fx[2,10] + fx[3,10] + fx[4,10] + fx[5,10]
+   + fx[6,10] + fx[7,10] + fx[8,10] + fx[9,10] = 11
+ R451: fx[10,0] + fx[10,1] + fx[10,2] + fx[10,3] + fx[10,4] + fx[10,5]
+   + fx[10,6] + fx[10,7] + fx[10,8] + fx[10,9] = 0
+Bounds
+ fx[0,1] free
+ fx[0,2] free
+ fx[0,3] free
+ fx[0,4] free
+ fx[0,5] free
+ fx[0,6] free
+ fx[0,7] free
+ fx[0,8] free
+ fx[0,9] free
+ fx[0,10] free
+ fx[1,0] free
+ fx[1,2] free
+ fx[1,3] free
+ fx[1,4] free
+ fx[1,5] free
+ fx[1,6] free
+ fx[1,7] free
+ fx[1,8] free
+ fx[1,9] free
+ fx[1,10] free
+ fx[2,0] free
+ fx[2,1] free
+ fx[2,3] free
+ fx[2,4] free
+ fx[2,5] free
+ fx[2,6] free
+ fx[2,7] free
+ fx[2,8] free
+ fx[2,9] free
+ fx[2,10] free
+ fx[3,0] free
+ fx[3,1] free
+ fx[3,2] free
+ fx[3,4] free
+ fx[3,5] free
+ fx[3,6] free
+ fx[3,7] free
+ fx[3,8] free
+ fx[3,9] free
+ fx[3,10] free
+ fx[4,0] free
+ fx[4,1] free
+ fx[4,2] free
+ fx[4,3] free
+ fx[4,5] free
+ fx[4,6] free
+ fx[4,7] free
+ fx[4,8] free
+ fx[4,9] free
+ fx[4,10] free
+ fx[5,0] free
+ fx[5,1] free
+ fx[5,2] free
+ fx[5,3] free
+ fx[5,4] free
+ fx[5,6] free
+ fx[5,7] free
+ fx[5,8] free
+ fx[5,9] free
+ fx[5,10] free
+ fx[6,0] free
+ fx[6,1] free
+ fx[6,2] free
+ fx[6,3] free
+ fx[6,4] free
+ fx[6,5] free
+ fx[6,7] free
+ fx[6,8] free
+ fx[6,9] free
+ fx[6,10] free
+ fx[7,0] free
+ fx[7,1] free
+ fx[7,2] free
+ fx[7,3] free
+ fx[7,4] free
+ fx[7,5] free
+ fx[7,6] free
+ fx[7,8] free
+ fx[7,9] free
+ fx[7,10] free
+ fx[8,0] free
+ fx[8,1] free
+ fx[8,2] free
+ fx[8,3] free
+ fx[8,4] free
+ fx[8,5] free
+ fx[8,6] free
+ fx[8,7] free
+ fx[8,9] free
+ fx[8,10] free
+ fx[9,0] free
+ fx[9,1] free
+ fx[9,2] free
+ fx[9,3] free
+ fx[9,4] free
+ fx[9,5] free
+ fx[9,6] free
+ fx[9,7] free
+ fx[9,8] free
+ fx[9,10] free
+ fx[10,0] free
+ fx[10,1] free
+ fx[10,2] free
+ fx[10,3] free
+ fx[10,4] free
+ fx[10,5] free
+ fx[10,6] free
+ fx[10,7] free
+ fx[10,8] free
+ fx[10,9] free
+End

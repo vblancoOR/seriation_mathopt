@@ -5,8 +5,30 @@ import seaborn as sns
 import pandas as pd
 import os
 
+def expand_matrix(A):
+    """
+    Expands the matrix A by adding an extra first column, last column, 
+    first row, and last row with values equal to max(A) + 1.
+
+    Parameters:
+        A (np.ndarray): The input matrix
+
+    Returns:
+        np.ndarray: The expanded matrix A1
+    """
+    max_value = A.min() - 1  # Find max entry of A and add 1
+    n, m = A.shape  # Original dimensions
+
+    # Create a new matrix filled with max_value, 2 rows and 2 columns larger
+    A1 = np.full((n + 2, m + 2), max_value, dtype=A.dtype)
+
+    # Copy A into the center of A1
+    A1[1:n+1, 1:m+1] = A
+
+    return A1
+
 class MatrixSeriation:
-    def __init__(self, matrix, file="test", method='general', time_limit=3600, extra_constraints=None, coordinated_ordering=True, output=0, eps_neigh="VN"):
+    def __init__(self, matrix, file="test", method='general', time_limit=3600, extra_constraints=None, coordinated_ordering=True, output=0, eps_neigh="VN", boundary="no"):
         """
         Initialize the MatrixSeriation class.
         
@@ -30,6 +52,7 @@ class MatrixSeriation:
         self.solution_info = {}
         self.output=output
         self.eps_neigh=eps_neigh
+        self.boundary=boundary
     
     def lproot(self, model, where):
         """
@@ -50,7 +73,10 @@ class MatrixSeriation:
             return self._solve_s()
         elif self.method == 'tsp':
             if self.eps_neigh=="VonNeumann":
-                return self._solve_tsp_VonNeumann()
+                if self.boundary=="yes":
+                    return self._solve_tsp_VonNeumann_Extra()
+                else:
+                    return self._solve_tsp_VonNeumann()
             elif self.eps_neigh=="Moore":
                 return self._solve_tsp_Moore()
             elif self.eps_neigh == "Cross":
@@ -341,7 +367,7 @@ class MatrixSeriation:
         model.optimize(self.lproot)
 
 
-
+        print("Obj: ", model.ObjVal)
         # Extract solution
         self.order_cols = np.argsort([sum(round(gy[i, j].x) for j in M) if zy[i].x < 0.5 else self.ncols-1 for i in M])
         self.order_rows = np.argsort([sum(round(gx[i, j].x) for j in N) if zx[i].x < 0.5 else self.nrows-1 for i in N])
@@ -350,6 +376,132 @@ class MatrixSeriation:
         self.transformed_matrix=transformed_matrix
         self._extract_solution_info(model)
 
+        return transformed_matrix
+    
+    def _solve_tsp_VonNeumann_Extra(self):
+
+        # Modelcle
+        model = gp.Model("tsp")
+        model.setParam("Outputflag", self.output)
+        model.setParam("TimeLimit", self.time_limit)
+        #model.setParam("MIPFocus", 2)
+
+        N0=range(self.nrows)
+        M0=range(self.ncols)
+
+        N=range(self.nrows+1)
+        M=range(self.ncols+1)
+        # Compute costs
+        C1={}
+        C2={ }
+        for i in N0:
+            for j in N0:
+                C1[i, j] =  sum(abs(self.matrix[i, k] - self.matrix[j, k]) for k in M0)
+        for i in M0:
+            for j in M0:
+                C2[i, j] =  sum(abs(self.matrix[k, i] - self.matrix[k, j]) for k in N0)
+
+        for i in N0:
+            C1[i,self.nrows]=sum(abs(self.matrix[i, k] - 0) for k in M0)
+            C1[self.nrows, i]=sum(abs(self.matrix[i, k] - 0) for k in M0)
+        for i in M0:
+            C2[i,self.ncols]=sum(abs(self.matrix[k, i] - 0) for k in N0)
+            C2[self.ncols, i]=sum(abs(self.matrix[k, i] -0) for k in N0)
+
+        nrows=self.nrows+1
+        ncols=self.ncols+1
+        # Variables
+        x = model.addVars(nrows, nrows, vtype=GRB.BINARY, name="x")
+        y = model.addVars(ncols, ncols, vtype=GRB.BINARY, name="y")
+        
+
+        fx = model.addVars(nrows, nrows, name="fx")
+        fy = model.addVars(ncols, ncols, name="fy")
+
+        # sx = model.addVars(nrows, name="sx")
+        # sy = model.addVars(ncols, name="sy")
+
+        if self.coordinated_ordering and self.ncols==self.nrows:
+            for i in N:
+                for k in N:
+                    model.addConstr(y[i,k]==x[i,k])
+                    model.addConstr(fy[i,k]==fx[i,k])
+                #model.addConstr(sx[i]==sy[i])
+
+
+        # Objective function
+        obj1=gp.quicksum(C1[i, j]*x[i, j] for i in N0 for j in N0 if i!=j)
+        obj2=gp.quicksum(C2[i, j]*y[i, j] for i in M0 for j in M0 if i!=j)
+        obj3=gp.quicksum(C1[nrows-1,i]*x[nrows-1,i]+ C1[i,nrows-1]*x[i, nrows-1] for i in N0)# + gp.quicksum(sy[i] for i in range(ncols-1))
+        obj4=gp.quicksum(C2[ncols-1,i]*y[ncols-1,i]+ C2[i,ncols-1]*y[i, ncols-1] for i in M0)
+        model.setObjective( obj1+ obj2 + 0.5*(obj3 + obj4), GRB.MINIMIZE)
+
+
+        # Constraints
+        for i in N:
+            model.addConstr(gp.quicksum(x[i, j] for j in N if j != i) == 1)
+            x[i, i].ub=0
+            model.addConstr(gp.quicksum(x[j,i] for j in N if i != j) == 1 )
+            if i!=nrows-1:
+                model.addConstr(gp.quicksum(fx[i, j] for j in N if i!=j) - gp.quicksum(fx[j,i] for j in N if i!=j)  == 1, name=f"FlowX({i})")
+            for j in N:
+                if j<i:
+                    model.addConstr(x[i, j] + x[j, i] <= 1)
+                model.addConstr(fx[i, j] <= (nrows) * x[i, j])
+        model.addConstr(gp.quicksum(fx[j, nrows-1] for j in N0) == nrows)
+        model.addConstr(gp.quicksum(fx[nrows-1, j] for j in N0) == 1)#nrows-1)
+        
+            
+        if not self.coordinated_ordering:
+            for i in M:
+                model.addConstr(gp.quicksum(y[i, j] for j in M if j != i)  == 1)
+                y[i,i].ub=0
+                model.addConstr(gp.quicksum(y[j, i] for j in M if i != j) == 1)
+                if i!= ncols-1:
+                    model.addConstr(gp.quicksum(fy[i,j] for j in M if i!=j) - gp.quicksum(fy[j,i] for j in M if i!=j) ==1, name=f"FlowY({i})")
+                for j in M:
+                    if j<i:
+                        model.addConstr(y[i, j] + y[j, i] <= 1)
+                    model.addConstr(fy[i, j] <= (ncols) * y[i, j])
+            model.addConstr(gp.quicksum(fy[j, ncols-1] for j in M0) == ncols)
+            model.addConstr(gp.quicksum(fy[ncols-1, j] for j in M0) == 1)#nrows-1
+
+
+        # Solve model
+        model._lproot=0
+        model.optimize(self.lproot)
+        #model.write("extra.lp")
+
+        if model.Status == GRB.INFEASIBLE:
+            model.computeIIS()
+            model.write('iismodel_BOUNDARIES.ilp')
+            print('infeasible model')
+
+        # for i in N:
+        #     if x[nrows-1,i].x>0.5:
+        #         i0=i
+        # order_rows=[i0]
+        # while i0!=nrows-1:
+        #     for j in N:
+        #         if x[i0,j].x>0.5:
+        #             i0=j
+        #             if i0!=nrows-1:
+        #                 order_rows.append(i0)
+
+
+        # print("Obj Borde 1: ", sum(C1[nrows-1,i]*x[nrows-1,i].x+ C1[i,nrows-1]*x[i, nrows-1].x for i in N0))# + gp.quicksum(sy[i] for i in range(ncols-1))
+        # print("Obj Borde 2: ", sum(C2[ncols-1,i]*y[ncols-1,i].x+ C2[i,ncols-1]*y[i, ncols-1].x for i in M0))
+
+        self.order_rows=np.argsort([sum(round(fx[j,i].x) for j in N) for i in N0])
+        self.order_cols=np.argsort([sum(round(fy[j,i].x) for j in M) for i in M0])
+
+        # Extract solution
+        # self.order_cols = np.argsort([sum(round(fy[i, j].x) for j in M)-1 for i in M if i<ncols-1])
+        # self.order_rows = np.argsort([sum(round(fx[i, j].x) for j in N)-1 for i in N if i<nrows-1])
+        transformed_matrix = self.matrix[self.order_rows,:][:, self.order_cols]
+        self.transformed_matrix=transformed_matrix
+        self._extract_solution_info(model)
+        print("Obj: ", sum(C1[i, j]*x[i, j].x for i in N0 for j in N0 if i!=j) + sum(C2[i, j]*y[i, j].x for i in M0 for j in M0 if i!=j))
         return transformed_matrix
 
     def _solve_tsp_Moore(self):
@@ -976,8 +1128,8 @@ class MatrixSeriation:
             "Memory": model.getAttr(GRB.Attr.MemUsed),
             "NumBinVars": model.NumBinVars,
             "NumCtrs": model.NumConstrs,
-            # "Homogeneity Original": self.Homogeneity(self.matrix),
-            # "Homogeneity Transformed": self.Homogeneity(self.transformed_matrix),
+            #"Homogeneity Original": self.Homogeneity(self.matrix),
+            #"Homogeneity Transformed": self.Homogeneity(self.transformed_matrix),
             "Order Rows": self.order_rows,
             "Order Cols": self.order_cols,
             # "Error Original": self._compute_error(self.matrix),
@@ -1046,7 +1198,7 @@ class MatrixSeriation:
         """Plots the original and transformed matrices side by side."""
         import matplotlib.pyplot as plt
 
-        fig, axes = plt.subplots(1, 2, figsize=(18, 11))
+        fig, axes = plt.subplots(1, 2, figsize=(20, 14)) #(18,11)
         
         
         cmap = sns.color_palette("coolwarm", as_cmap=True)
@@ -1209,7 +1361,10 @@ def generate_balanced_block_matrix(n, m, K):
 
     return original, matrix
 
-    
+def random_partition(n, m):
+    cuts = np.sort(np.random.randint(1, n, m - 1))  # Generate m-1 random cut points
+    parts = np.diff([0] + cuts.tolist() + [n])  # Compute differences between cut points
+    return parts
 
 
 
