@@ -1,4 +1,10 @@
-# Seriation via Mathematical Optimization
+# Unified Optimization Framework for Matrix Seriation under Stress and Effectiveness Criteria
+
+by Víctor Blanco, Alfredo Marín, and Justo Puerto
+
+Preprint available at arxiv.
+
+## Seriation via Mathematical Optimization
 
 This repository contains code and experiments for solving matrix seriation problems using mathematical optimization techniques. Our focus is on exact formulations that optimize stress-based and efficiency-based objective functions, with applications in data visualization, pattern recognition, and cluster detection.
 
